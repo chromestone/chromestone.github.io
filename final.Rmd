@@ -1265,7 +1265,9 @@ rain_final %>%
   ggplot() +
   geom_line(mapping = aes(x = the_date, y = avg)) +
   facet_wrap(~STATION, ncol = 4) +
-   theme(axis.text.x = element_text(angle = 25, hjust = 0.75))
+  theme(axis.text.x = element_text(angle = 25, hjust = 0.75)) +
+  labs(y = "Average Hourly Precipitation (Tenth Millimeter)", x = "Date",
+     title = "Average Hourly Precipitation vs Time")
 ```
 
 We can see there are roughly 6 spikes in rain for each stations This makes sense since this are 6 years of data and there are "rainy" months/seasons.
@@ -1275,6 +1277,7 @@ We can see there are roughly 6 spikes in rain for each stations This makes sense
 I will be showing you how to prepare the data.
 
 Our features will be:
+
 * all the past rain data for that month (across all years)
 * the corresponding orthophosphate levels except for the latest month
 
@@ -1312,17 +1315,7 @@ rain_join_this <- rain_final %>%
 rain_join_this
 ```
 
-
-Now let's join the two datasets! I will first perform a left join.
-
-```{r}
-tmp <- ortho_df %>%
-  filter(the_date < outcome_cutoff)
-
-ortho_months <-split(tmp, tmp$binding_month)
-```
-
-If all goes well the below code should work.
+We will need to also get the orthophosphate data in the right format. If all goes well the below code should work.
 
 ```{r}
 predictor_df <- ortho_df %>%
@@ -1393,7 +1386,7 @@ sum(attributes_missing)
 
 The future step could be to impute by using perhaps the mean.
 
-I will finish by joining the data as promised. The outcome data still needs to be made though.
+Now let's join the two datasets! (The outcome data still needs to be made though.)
 
 ```{r}
 joined_data <- predictor_df %>%
@@ -1408,8 +1401,8 @@ joined_data
 
 In conclusion, the data is a large part of the effort. I underestimated the time it would take to wrangle the data.
 
-One of the biggest bottlenecks is missing data.
+One of the biggest bottlenecks is missing data. So unfortunately, I did not get to answering the question of can we predict the orthophosphate level.
 
-I hope that this "tutorial" helps someone and perhaps someone will do supervised machine learning with the process data.
+I hope that this "tutorial" helps someone and perhaps someone will do supervised machine learning with the processed data.
 
 ## References
