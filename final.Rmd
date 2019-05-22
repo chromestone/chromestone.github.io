@@ -726,7 +726,6 @@ As you can see above, this is no longer telling us any additional information. I
 ortho_df <- ortho_df %>% select(-`Sample Fraction`)
 ```
 
-
 The last thing I will do before missing data is parse the longitude and latitude. Note that I am still keeping "Location 1" as comparing doubles for exact match is not as easy as strings.
 
 ```{r}
@@ -789,7 +788,7 @@ ortho_df %>% filter(`Station ID` == "MD0066184")
 ortho_df %>% filter(`Station ID` == "MD0022993")
 ```
 
-It seems that these stations are only have 3 data points. This will not be enough for our predictor anyway. I remove these stations below.
+It seems that these stations each only have 3 data points. This will not be enough for our predictor anyway. (I plan to use data across the 5 years.) I remove these stations below.
 
 ```{r}
 ortho_df <- ortho_df %>%
@@ -906,6 +905,8 @@ rain_tidy %>%
   select(STATION, DATE, start_date, HPCP) %>%
   head()
 ```
+
+Now let's get back to the missing data.
 
 To see if there is actually some data that is not missing in a month, we can add a logical flag (0 or 1) for if that data is _not_ missing. Then if we group and sum, the only possible value when _all_ the data is missing is 0.
 
@@ -1068,15 +1069,15 @@ ortho_df %>%
   distinct(`Station ID`, `Location 1`)
 ```
 
-I looked up outfall. Basically it is water leaving a facility. My best guess is that these are for the multiple ways water can exit for some facility.
-
-```{r, include=FALSE, echo=FALSE}
-#knitr::opts_chunk$set(eval = FALSE)
-```
+I looked up outfall. Basically it is water leaving a facility. My best guess is that these are for the multiple ways water can exit for some facility. I will worry about this when I have to (later).
 
 #### Clustering
 
-Note that it is very important to standardize the data.
+I will do some unsupervised learning with k-means clustering. I would like to know what regions are similar in their orthophosphate levels.
+
+Note when doing clustering it is very important to scale the data so that the scales for all variables are similar. Let's do that first.
+
+Below, I first get a yearly average for all the unique geolocations.
 
 ```{r}
 lat_lng_year_avg <- ortho_df %>%
@@ -1086,6 +1087,8 @@ lat_lng_year_avg <- ortho_df %>%
 
 lat_lng_year_avg %>% head()
 ```
+
+Now we can standardize within each year across the geolocations. Below, I perform this operation.
 
 ```{r}
 cluster_this <- lat_lng_year_avg %>%
@@ -1098,9 +1101,11 @@ cluster_this <- lat_lng_year_avg %>%
 cluster_this %>% head()
 ```
 
-In this case I compute a non-weighted mean. This is because there is no real significance of one location having more data.
+Next, we scale the geolocation. In this case I compute a non-weighted mean. This is because there is no real significance of one location having more data.
 
-We are simply trying to do a _scaling_ operation to make the clustering work better.
+In other words, we are simply trying to do a _scaling_ operation to make the clustering work better.
+
+Below I compute the non-weighted mean for location using distinct.
 
 ```{r}
 lat_stats <- cluster_this %>% distinct(lat) %>% summarize(avg = mean(lat), stdev = sd(lat))
@@ -1111,115 +1116,300 @@ cluster_this <- cluster_this %>%
          std_lng = (lng - lng_stats$avg) / lng_stats$stdev)
 ```
 
+Let's visualize the data. In the plot below, I plot based on geolocation and then add color to indicate the values.
+
 ```{r}
 cluster_this %>%
   ggplot(mapping = aes(x = std_lat, y = std_lng, color = std_val)) +
   geom_point(alpha = 0.3) +
   facet_wrap(~the_year, ncol = 3) + 
-  scale_color_gradient(low="black", high="red")
+  scale_color_gradient(low = "black", high = "red") +
+  labs(y = "Standardized Longitude", x = "Standardized Latitude",
+       color = "Std. Value",
+       title = "Standardized Values against Geolocation")
 ```
+
+It's faint, but there are some red circles. And woah! It seems we have data 10 standard deviations away from the mean!
 
 ```{r}
 cluster_this %>%
+  # here I plot the normal points
   filter(std_val < 2) %>%
   ggplot(mapping = aes(x = std_lat, y = std_lng)) +
   geom_point(alpha = 0.3) +
+  # here I plot the exceptions
   geom_point(data = cluster_this %>% filter(std_val >= 2),
              mapping = aes(size = std_val),
              color = "red") +
-  facet_wrap(~the_year, ncol = 3)
+  facet_wrap(~the_year, ncol = 3) +
+  labs(y = "Standardized Longitude", x = "Standardized Latitude",
+     color = "Std. Value",
+     title = "Standardized Values against Geolocation with Exceptions Highlighted")
 ```
 
-What could possibly explain this drastic change?
+What could possibly explain these exceptions? I wonder if there may be error in my computation or data.
+
+Below, I compute the summary statistics.
 
 ```{r}
 summary(lat_lng_year_avg$region_year_avg)
 ```
 
-Yeah I think that big max value will do it!
+That very large max value explains it! It does not seem like this is an error. From the shape of Maryland, and the shape of the graph, it seems like the measurment is near Washington, D.C. This could be something like the Potomac River. Maybe that's why the levels are high?
+
+Below I run the clustering algorithm for k parameters 1 through 10. 
 
 ```{r}
 set.seed(1234)
-x <- cluster_this %>%
+cluster_res <- cluster_this %>%
+  # we only want to cluster on these three attributes
   select(std_lat, std_lng, std_val) %>%
   cluster::clusGap(stats::kmeans, K.max=10)
-x
+
+cluster_res
 ```
 
+We can see an output table. Let's visualize this. First we will need to tidy the results.
+
 ```{r}
-result <- x$Tab %>%
+# get the table and convert it to a tidy tibble
+result <- cluster_res$Tab %>%
   as_tibble() %>%
+  # make the row's id into a attribute itself so we can graph it
   rowid_to_column("k")
 ```
+
+Below I graph the gap statistic for each k value.
 
 ```{r}
 ggplot(result, mapping = aes(x = k, y = gap)) +
   geom_point() +
   geom_line() +
-  geom_errorbar(mapping = aes(ymin = gap - SE.sim, ymax = gap + SE.sim))
+  geom_errorbar(mapping = aes(ymin = gap - SE.sim, ymax = gap + SE.sim)) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  labs(y = "Gap Statistic", x = "k Parameter",
+     title = "Gap Statistic vs k Parameter")
 ```
 
+From this plot it would seem that the optimal number of clusters is 1. For more information on gap statistics and cluster see in the references [@tibshirani_walther_hastie_2002]. Let's double check this.
+
 ```{r}
-cluster::maxSE(x$Tab[ ,"gap"], x$Tab[ ,"SE.sim"],
+cluster::maxSE(cluster_res$Tab[ ,"gap"], cluster_res$Tab[ ,"SE.sim"],
       method = "Tibs2001SEmax",
       SE.factor = 1)
 ```
 
+Wow, this clustering really failed. This result was against my intuition since I expected areas that are close to have similar water contents. Intuitively, these areas would be very likely to be clustered together since all three attributes (latitude, longitude, orthophosphate levels) would be close.
+
+I would like to return back to the topic of the distribution of the values. There seemed to be some extreme exceptions.
+
+```{r}
+lat_lng_year_avg %>%
+  ggplot() +
+  geom_boxplot(mapping = aes(x = the_year, y = region_year_avg, group = the_year)) +
+  labs(y = "Average Orthophosphate (mg/l)", x = "Year",
+     title = "Distribution of Average Orthophosphate by Year")
+```
+
+In the above plot we can see the distribution of orthophosphate levels for each year across location. We can see that there are some clear outliers.
+
 ### NOAA Precipitation
 
-
-```{r, include=FALSE, echo=FALSE}
-#rain_stuff %>% distinct(`STATION_NAME`)
-```
-
-```{r, include=FALSE, echo=FALSE}
-#rain_stuff %>% distinct(LATITUDE, LONGITUDE)
-```
-
-```{r, include=FALSE, echo=FALSE}
-#rain_stuff %>% distinct(LATITUDE, LONGITUDE, `STATION_NAME`)
-```
+Below I show a map for the stations that collect precipitation data.
 
 ```{r map_stuff_noaa}
-tmp <- rain_tidy %>% distinct(LATITUDE, LONGITUDE)
-
-rain_map <- leaflet(tmp) %>%
+rain_map <- rain_tidy %>%
+  distinct(LATITUDE, LONGITUDE) %>%
+  leaflet() %>%
   addTiles() %>%
   addMarkers(lng = ~LONGITUDE, lat = ~LATITUDE, clusterOptions = markerClusterOptions())
 
 rain_map
 ```
 
-```{r, include=FALSE, echo=FALSE}
-# rain_df %>%
-#   mutate(the_year = year(DATE),
-#          the_month = month(DATE)) %>%
-#   group_by(the_year, the_month) %>%
-#   summarize(samples = n())
+Interestingly we get 10 unique geolocations yet there are only 7 stations. Below I output the unique geolocations.
+
+```{r}
+rain_tidy %>%
+  distinct(LATITUDE, LONGITUDE)
 ```
 
-```{r, include=FALSE, echo=FALSE}
-# rain_df %>%
-#   mutate(the_year = year(DATE),
-#          the_month = month(DATE)) %>%
-#   group_by(the_year, the_month) %>%
-#   summarize(samples = n())
+As you can see above, there appears to be some rounding errors. This will not be a problem as our final table uses only the station IDs.
+
+The following graph shows the average hourly rain accumulation through time.
+
+```{r}
+rain_final %>%
+  mutate(the_date =
+           # I kinda had to hack this date conversion
+           # To get a date object, I compute a period and then add to year 0.
+           as.Date(years(year) + months(month - 1),
+                   origin = "0000-01-01")) %>%
+  ggplot() +
+  geom_line(mapping = aes(x = the_date, y = avg, color = STATION)) +
+  labs(y = "Average Hourly Precipitation (Tenth Millimeter)", x = "Date",
+     title = "Average Hourly Precipitation vs Time")
 ```
+
+Note that "Average Hourly Precipitation" is for average for hours when it did rain.
+
+It seems that the areas in Maryland get shifted levels of rainfall but they all follow a general trend. This graph is a little hard to see, let's facet this.
+
+```{r}
+rain_final %>%
+  mutate(the_date =
+           # I kinda had to hack this date conversion
+           # To get a date object, I compute a period and then add to year 0.
+           as.Date(years(year) + months(month - 1),
+                   origin = "0000-01-01")) %>%
+  ggplot() +
+  geom_line(mapping = aes(x = the_date, y = avg)) +
+  facet_wrap(~STATION, ncol = 4) +
+   theme(axis.text.x = element_text(angle = 25, hjust = 0.75))
+```
+
+We can see there are roughly 6 spikes in rain for each stations This makes sense since this are 6 years of data and there are "rainy" months/seasons.
 
 ## Methods
 
-_TODO_
+I will be showing you how to prepare the data.
+
+Our features will be:
+* all the past rain data for that month (across all years)
+* the corresponding orthophosphate levels except for the latest month
+
+Our target is the orthophosphate level for the latest month.
 
 ### Joining the Datasets
 
-_TODO_
+Note that I want to establish a "causality" between rain and orthophosphate (in some sense). So I actually want the previous month of rain to be paired with each orthophosphate level. The orthophosphate is sampled at the beginning of each month, so we can almost think of this as the "result" of the previous month.
 
-## Results
+```{r}
+ortho_df <- ortho_df %>%
+  mutate(binding_date = (the_date - months(1))) %>%
+  # these make it easier to do a join as we'll see
+  mutate(binding_month = month(binding_date)) %>%
+  mutate(binding_year = year(binding_date))
+```
 
-_TODO_
+Let's get to splitting the data into our predictor data and outcome (target) data.
+
+```{r}
+outcome_cutoff = ortho_df %>% summarize(max_date = max(the_date))
+outcome_cutoff <- outcome_cutoff$max_date[1] - years(1)
+outcome_cutoff
+```
+
+Now we need to do some processing on rain final. I want each row to be for a particular month. So we will need to first combine the station ID and year. Then will use the spread function.
+
+```{r}
+rain_join_this <- rain_final %>%
+  # unite STATION and year with a "." in between, column name is spread_key
+  unite("spread_key", STATION, year, sep = ".") %>%
+  select(-global_avg) %>%
+  spread(spread_key, avg)
+
+rain_join_this
+```
+
+
+Now let's join the two datasets! I will first perform a left join.
+
+```{r}
+tmp <- ortho_df %>%
+  filter(the_date < outcome_cutoff)
+
+ortho_months <-split(tmp, tmp$binding_month)
+```
+
+If all goes well the below code should work.
+
+```{r}
+predictor_df <- ortho_df %>%
+  filter(the_date < outcome_cutoff) %>%
+  select(`Station ID`, `Result Value`, binding_month, binding_year) %>%
+  unite("station_month", `Station ID`, binding_month, sep = ".")# %>%
+  # spread(binding_year, `Result Value`)
+```
+
+Oh no! As you can see I commented out code to show what we would have done. There was a unique key error. In other words, the station_month, binding year tuple is not unique! There are stations that double recorded!
+
+```{r}
+predictor_df %>%
+  group_by(station_month, binding_year) %>%
+  summarize(samples = n()) %>%
+  arrange(desc(samples))
+```
+
+In the above output we can see that "MD0000311" is the offending station.
+
+Below I investigate further.
+
+```{r}
+predictor_df %>% filter(station_month == "MD0000311.12", binding_year == "2009")
+```
+
+Let's look back to the original data and see if maybe these samples were taken on different days.
+
+```{r}
+ortho_df %>% filter(`Station ID` == "MD0000311",
+                    binding_month == 12,
+                    binding_year == "2009") %>%
+  select(the_date)
+```
+
+So these are conflicting measurements on the same day! The simplest solution is just to do an average.
+
+```{r}
+predictor_df <- predictor_df %>%
+  group_by(station_month, binding_year) %>%
+  summarize(avg_value = mean(`Result Value`)) %>%
+  spread(binding_year, avg_value)
+
+predictor_df
+```
+
+We can see there is much data missing.
+
+Below, I compute a list of how many attributes are missing for each.
+
+```{r}
+attributes_missing <- rowSums(is.na(predictor_df))
+
+attributes_missing %>% head()
+```
+
+We can see below that there is no perfect row (without any data missing). This is unfortunate.
+
+```{r}
+min(attributes_missing)
+```
+
+There should be a total of about 15 thousand attributes total (3000 * 5). We can see below that over 20% of the data is missing.
+
+```{r}
+sum(attributes_missing)
+```
+
+The future step could be to impute by using perhaps the mean.
+
+I will finish by joining the data as promised. The outcome data still needs to be made though.
+
+```{r}
+joined_data <- predictor_df %>%
+  separate("station_month", c("station_id", "month"), sep = "\\.") %>%
+  mutate(month = as.numeric(month)) %>%
+  left_join(rain_join_this, by = "month")
+
+joined_data
+```
 
 ## Conclusions
 
-_TODO_
+In conclusion, the data is a large part of the effort. I underestimated the time it would take to wrangle the data.
+
+One of the biggest bottlenecks is missing data.
+
+I hope that this "tutorial" helps someone and perhaps someone will do supervised machine learning with the process data.
 
 ## References
