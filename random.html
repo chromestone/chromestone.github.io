@@ -1,12 +1,18 @@
 <html>
 <head>
 	<script>
+	// BEFORE YOU LOOK AT MY CODE:
+	// check this value. My code doesn't work for FAIL_SUM >= 7
 	// if they get this or lower catestrophe strikes
 	const FAIL_SUM = 4;
-	const HOW_MANY_ROUNDS = 5;
+
+	//fails on [this] many clicks
+	const HOW_MANY_ROUNDS = 4;
+
 	let num = 1;
-	function myFunction_score_inc() {
-		document.getElementById("myScore").stepUp(1);
+
+	function myFunction_score_inc(inc) {
+		document.getElementById("myScore").stepUp(inc);
 	}
 	function myFunction_score_dec() {
 		document.getElementById("myScore").stepDown(1);
@@ -14,26 +20,21 @@
 	function myFunction_risk_inc() {
 		document.getElementById("myRisk").stepUp(1);
 	}
-	function myFunction_risk_dec() {
-		document.getElementById("myRisk").stepDown(1);
-	}
 	//https://stackoverflow.com/questions/2956966/javascript-telling-setinterval-to-only-fire-x-amount-of-times
 	function setIntervalX(delay, repetitions, roll1, roll2) {
 
 		var x = 0;
 		var intervalID = window.setInterval(function () {
 
-			document.getElementById("roll1").innerHTML =
-				Math.floor(Math.random() * 6) + 1;
-			document.getElementById("roll2").innerHTML =
-				Math.floor(Math.random() * 6) + 1;
+			let r1 = Math.floor(Math.random() * 6) + 1;
+			let r2 = Math.floor(Math.random() * 6) + 1;
+			document.getElementById("the_roll").innerHTML = `${r1} + ${r2}`;
 
 			if (++x === repetitions) {
 
 				window.clearInterval(intervalID);
 
-				document.getElementById("roll1").innerHTML = roll1;
-				document.getElementById("roll2").innerHTML = roll2;
+				document.getElementById("the_roll").innerHTML = `${roll1} + ${roll2}`;
 				document.getElementById("roller").disabled = false;
 			}
 		}, delay);
@@ -51,6 +52,7 @@
 
 			setIntervalX(200, 10, roll1, roll2);
 			num += 1
+			document.getElementById("round_id").innerHTML = `Finish`;
 		}
 		else if (num < 5) {
 
@@ -72,28 +74,35 @@
 			roll2 = roll2 + Math.floor(Math.random() * (7 - roll2));
 			setIntervalX(200, 10, roll1, roll2);
 			num += 1
+			document.getElementById("round_id").innerHTML = `Round ${num}`;
 		}
 	}
 	</script>
 </head>
 <body>
+	<div align="center">
+	<h1 id='round_id'>Round 1</h1>
 	<p>Team Name:</p>
-	<textarea rows="2" cols="64"></textarea><br>
+	<textarea rows="2" cols="64"></textarea>
+	<br><br>
 	Score:<br>
-	<button onclick="myFunction_score_inc()">Up</button>
+	<button onclick="myFunction_score_inc(1)">No Risk</button>
+	<button onclick="myFunction_score_inc(3)">Succeeded Risk</button>
+	<button onclick="myFunction_score_dec()">Failed Risk</button>
 	<input type="number" id="myScore" value=0>
-	<button onclick="myFunction_score_dec()">Down</button><br>
+	<br><br>
 	Risk:<br>
-	<button onclick="myFunction_risk_inc()">Up</button>
+	<button onclick="myFunction_risk_inc()">+1</button>
 	<input type="number" id="myRisk" value=0>
-	<button onclick="myFunction_risk_dec()">Down</button><br>
-	<button onclick="rollIt()" id="roller"><h3>ROLL</h3></button><br>
-	<h2 id='roll1'></h2>
-	<h2 id='roll2'></h2>
+	<br><br>
+	<button onclick="rollIt()" id="roller"><h3>ROLL</h3></button>
+	<br>
+	<h2 id='the_roll'></h2>
+	</div>
 	<h1>Overview</h1>
 	<p>Each round has two phases: decision phase and investigation phase.</p>
 	<p>Roll the dice regardless of if you decide to take the risk. The die only matters in the case of a risky decision.</p>
 	<p><b>If your roll totals to 4 or less you fail the action and take any consequences.</b></p>
-	<p>In the investigation phase, go to one of us, the safety investigators, in front of the class and publicly announce the decision.</p>
+	<p>In the investigation phase, talk to the safety investigators in front of the class and publicly announce the decision.</p>
 </body>
 </html>
