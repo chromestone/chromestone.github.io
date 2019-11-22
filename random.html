@@ -14,8 +14,8 @@
 	function myFunction_score_inc(inc) {
 		document.getElementById("myScore").stepUp(inc);
 	}
-	function myFunction_score_dec() {
-		document.getElementById("myScore").stepDown(1);
+	function myFunction_score_dec(dec) {
+		document.getElementById("myScore").stepDown(dec);
 	}
 	function myFunction_risk_inc() {
 		document.getElementById("myRisk").stepUp(1);
@@ -51,8 +51,8 @@
 		if (num == HOW_MANY_ROUNDS) {
 
 			setIntervalX(200, 10, roll1, roll2);
-			num += 1
-			document.getElementById("round_id").innerHTML = `Finish`;
+			num += 1;
+			document.getElementById("round_id").innerHTML = "END";
 		}
 		else if (num < 5) {
 
@@ -73,7 +73,7 @@
 			// roll2 + x, x in [0, 6 - roll2] => [roll2, 6]
 			roll2 = roll2 + Math.floor(Math.random() * (7 - roll2));
 			setIntervalX(200, 10, roll1, roll2);
-			num += 1
+			num += 1;
 			document.getElementById("round_id").innerHTML = `Round ${num}`;
 		}
 	}
@@ -85,12 +85,6 @@
 	<p>Team Name:</p>
 	<textarea rows="2" cols="64"></textarea>
 	<br><br>
-	Score:<br>
-	<button onclick="myFunction_score_inc(1)">No Risk</button>
-	<button onclick="myFunction_score_inc(3)">Succeeded Risk</button>
-	<button onclick="myFunction_score_dec()">Failed Risk</button>
-	<input type="number" id="myScore" value=0>
-	<br><br>
 	Risk:<br>
 	<button onclick="myFunction_risk_inc()">+1</button>
 	<input type="number" id="myRisk" value=0>
@@ -98,6 +92,12 @@
 	<button onclick="rollIt()" id="roller"><h3>ROLL</h3></button>
 	<br>
 	<h2 id='the_roll'></h2>
+	Score:<br>
+	<button onclick="myFunction_score_inc(1)">No Risk</button>
+	<button onclick="myFunction_score_inc(3)">Succeeded Risk</button>
+	<button onclick="myFunction_score_dec(2)">Failed Risk</button>
+	<input type="number" id="myScore" value=0>
+	<br><br>
 	</div>
 	<h1>Overview</h1>
 	<p>Each round has two phases: decision phase and investigation phase.</p>
