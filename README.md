@@ -1,13 +1,7 @@
 # chromestone.github.io
 
-## CMSC 320 Final Project
+My website?
 
-* index.html is the final project
-* final.Rmd is the source for index.html
-* bibliography.bibtex is the source for bibliographies
-* data folder contains the data (when running final.Rmd, move it to the same directory level)
-
-Ignore
-
-* helloworld.html
-* nyan.wav
+Ignore:
+* random.html (I used this for a 'skit' in ENEE200.)
+* nyan.wav (I used this to play annoying sounds for CMSC414.)
