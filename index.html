@@ -65,6 +65,7 @@
 			document.getElementById(cityName).style.display = "block";
 			evt.currentTarget.className += " active";
 		}
+		document.getElementById("TABLINKSDEFAULT").click();
 	</script>
 <body>
 	<h1>Derek Zhang</h1>
@@ -79,8 +80,9 @@
 
 	<!-- Tab links -->
 	<div class="tab">
-	<button class="tablinks" onclick="openCity(event, 'INSTRUCTAR')">InstructAR</button>
+	<button id="TABLINKSDEFAULT" class="tablinks" onclick="openCity(event, 'INSTRUCTAR')">InstructAR</button>
 	<button class="tablinks" onclick="openCity(event, 'STEGNETCOVERTCAST')">StegNet CovertCast</button>
+	<button class="tablinks" onclick="openCity(event, 'ORIGINALBIRDS')">Original Birds</button>
 	<button class="tablinks" onclick="openCity(event, 'FIRE')">FIRE</button>
 	<button class="tablinks" onclick="openCity(event, 'ACES')">ACES</button>
 	<button class="tablinks" onclick="openCity(event, 'MISC')">Misc</button>
@@ -89,7 +91,7 @@
 	<!-- Tab content -->
 	<div id="INSTRUCTAR" class="tabcontent">
 		<h3>InstructAR</h3>
-		<p>Augmented reality mobile app aid for teachers in the classroom setting. Please visit <a href="http://instructar.org">instructar.org</a> for more information</p>
+		<p>Augmented reality mobile app aid for teachers in the classroom setting. Please visit <a href="http://instructar.org">instructar.org</a> for more information.</p>
 	</div>
 
 	<div id="STEGNETCOVERTCAST" class="tabcontent">
@@ -99,6 +101,11 @@
 				No biggie... you can <a href="stegnet_covertcast.pdf">click here to
 			download the PDF file.</a></p>  
 		</object>
+	</div>
+	
+	<div id="ORIGINALBIRDS" class="tabcontent">
+		<h3>Original Birds</h3>
+		<p>A browser extension that brings back the legacy Twitter verified checkmarks. Please visit <a href="https://chromestone.github.io/OriginalBirds/">chromestone.github.io/OriginalBirds/</a> for more information.</p>
 	</div>
 
 	<div id="FIRE" class="tabcontent">
